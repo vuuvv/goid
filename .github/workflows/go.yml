@@ -33,10 +33,10 @@ jobs:
             go: gccgo-11
           - arch: x64
             go: gccgo-12
-          # NB: gccgo-13 and gccgo-14 are not available in the Ubuntu 22.04.
-          #
-          # TODO(https://github.com/actions/runner-images/issues/9848): Add gccgo-13 and gccgo-14
-          # when Ubuntu 24.04 is GA on GitHub Actions.
+          - arch: x64
+            go: gccgo-13
+          - arch: x64
+            go: gccgo-14
         arch:
           - armv6
           - armv7
@@ -64,6 +64,8 @@ jobs:
           - '1.21'
           - '1.22'
           - '1.23'
+          - '1.24'
+          - '1.25'
         exclude:
           # Support for s390x was added in Go1.7. See https://go.dev/doc/go1.7#ports.
           - arch: s390x
@@ -72,12 +74,14 @@ jobs:
             go: '1.6'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Go
+        id: setup-go
         if: ${{ !startsWith(matrix.go, 'gccgo-') }}
-        uses: actions/setup-go@v5.0.2
+        uses: actions/setup-go@v6.4.0
         with:
           go-version: ${{ matrix.go }}
+          check-latest: true
       - name: Set up gccgo
         if: ${{ startsWith(matrix.go, 'gccgo-') }}
         shell: bash
@@ -216,7 +220,7 @@ jobs:
           # Non-host *.syso files are missing from the Go toolchains provided
           # by setup-go. See https://github.com/actions/setup-go/issues/181.
           curl --location --output "$(go env GOROOT)"/src/runtime/race/race_linux_"$GOARCH".syso \
-            https://github.com/golang/go/raw/release-branch.go${{ matrix.go }}/src/runtime/race/race_linux_"$GOARCH".syso
+            https://github.com/golang/go/raw/refs/tags/go${{ steps.setup-go.outputs.go-version }}/src/runtime/race/race_linux_"$GOARCH".syso
 
           sudo apt update
           sudo apt install -y gcc-${{ matrix.arch }}-linux-gnu
@@ -255,7 +259,7 @@ jobs:
           matrix.arch != '386' &&
           matrix.arch != 'x64' &&
           steps.configure_environment.outputs.QEMU_EMULATION_WORKS
-        uses: uraimo/run-on-arch-action@v2
+        uses: uraimo/run-on-arch-action@v3
         with:
           arch: ${{ matrix.arch }}
           distro: bookworm
